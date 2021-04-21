@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="mainP" prefHeight="100" prefWidth="300" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pg.project.bsk.Controller">
+    <center>
+        <VBox alignment="CENTER_LEFT" spacing="5">
+            <padding>
+                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+            </padding>
+            <Label text="File sending progress" style="
+            -fx-font: 16px Helvetica;
+            -fx-stroke: black;
+            -fx-stroke-width: 1;" />
+            <ProgressBar prefHeight="18.0" prefWidth="300.0" progress="0.5" />
+        </VBox>
+    </center>
+</BorderPane>
