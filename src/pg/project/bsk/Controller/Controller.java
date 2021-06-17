@@ -5,10 +5,12 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
 import javafx.scene.control.TextArea;
+import pg.project.bsk.Decryptor.AES;
 import pg.project.bsk.appinfo.AppInfo;
 import pg.project.bsk.client.Client;
 import pg.project.bsk.server.Server;
@@ -20,12 +22,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Controller {
+
+    private AES.AesType currentDecryptionType = AES.AesType.AES_ECB;
+
     @FXML
     Button submitTextMessage;
     @FXML
     TextArea mainTextArea;
     @FXML
     TextField mainTextField;
+    @FXML
+    ComboBox<String> chooseCryptType;
 
 
     @FXML
@@ -72,5 +79,24 @@ public class Controller {
     @FXML
     public void onEnter(ActionEvent event){
         submitMessage(event) ;
+    }
+
+    @FXML
+    public void encryptionChanged(ActionEvent actionEvent) {
+        switch(chooseCryptType.getValue()){
+            case "ECB":
+                currentDecryptionType = AES.AesType.AES_ECB;
+                break;
+            case "CBC":
+                currentDecryptionType = AES.AesType.AES_CBC;
+                break;
+            case "OFB":
+                currentDecryptionType = AES.AesType.AES_OFB2;
+                break;
+        }
+    }
+
+    public AES.AesType getCurrentDecryptionType(){
+        return currentDecryptionType;
     }
 }

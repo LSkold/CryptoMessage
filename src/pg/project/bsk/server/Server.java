@@ -3,9 +3,11 @@ package pg.project.bsk.server;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.layout.Pane;
 import pg.project.bsk.Controller.Controller;
+import pg.project.bsk.Decryptor.AES;
 
 import java.net.*;
 import java.io.*;
+import java.util.Objects;
 
 public class Server extends Thread {
 
@@ -96,12 +98,14 @@ public class Server extends Thread {
     }
 
     public void sendMessage(String message) throws IOException {
-        output.writeUTF(message);
+        String tmp = AES.encrypt(message, controller.getCurrentDecryptionType());
+        System.out.println(tmp);
+        output.writeUTF(tmp);
     }
 
-    public String getMessage(String message) {
-        controller.updateMainTextArea(message);
-        return message;
+    public void getMessage(String message) {
+        String tmp = AES.decrypt(message, controller.getCurrentDecryptionType());
+        controller.updateMainTextArea(tmp);
     }
 }
 

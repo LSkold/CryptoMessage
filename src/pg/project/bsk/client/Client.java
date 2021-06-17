@@ -2,6 +2,7 @@ package pg.project.bsk.client;
 
 import javafx.fxml.FXMLLoader;
 import pg.project.bsk.Controller.Controller;
+import pg.project.bsk.Decryptor.AES;
 import pg.project.bsk.Main;
 
 import java.net.*;
@@ -58,11 +59,14 @@ public class Client extends Thread {
     }
 
     private void getMessage(String message) {
-        controller.updateMainTextArea(message);
+        String tmp = AES.decrypt(message, controller.getCurrentDecryptionType());
+        controller.updateMainTextArea(tmp);
     }
 
     public void sendMessage(String message) throws IOException {
-        output.writeUTF(message);
+        String tmp = AES.encrypt(message, controller.getCurrentDecryptionType());
+        System.out.println(tmp);
+        output.writeUTF(tmp);
     }
 
 }
