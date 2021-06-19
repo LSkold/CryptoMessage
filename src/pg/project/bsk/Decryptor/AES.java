@@ -1,11 +1,16 @@
 package pg.project.bsk.Decryptor;
 
 
-import com.sun.org.apache.xml.internal.security.utils.Base64;
+
 
 import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
 
 public class AES {
 
@@ -24,50 +29,87 @@ public class AES {
         public String getValue(){return value;}
     }
 
-    private static final String key = "aesEncryptionKey";
-    private static final String initVector = "encryptionIntVec";
+    // passphrase: pawellukas
+    // salt:       DEF8C2400A6D8225
+    // key:        48EF43F24EF8EDA5
+    // iv:         D92B535880442EFD
+
+    private static final String key        = "48EF43F24EF8EDA5";
+    private static final String initVector = "D92B535880442EFD";
+
+
+    public static IvParameterSpec generateInitializationVector() {
+        byte[] iv = new byte[16];
+        new SecureRandom().nextBytes(iv);
+        return new IvParameterSpec(iv);
+    }
 
 
 
-    public static String encrypt(String value, AesType method) {
+    public static byte[] encrypt(byte[] value, AesType method) {
         try {
             IvParameterSpec iv = new IvParameterSpec(
-                    initVector.getBytes("UTF-8") // do zmiany
+                    initVector.getBytes() // do zmiany //"UTF-8"
             );
-            SecretKeySpec skeySpec = new SecretKeySpec(
-                    key.getBytes("UTF-8"), // do zmiany
+
+            //IvParameterSpec x = generateInitializationVector();
+            //SecretKey y = getRandomSecureKey(128);
+
+            SecretKey skeySpec = new SecretKeySpec(
+                    key.getBytes(), // do zmiany //"UTF-8"
                     AesType.AES.value);
 
             Cipher cipher = Cipher.getInstance(method.value);
-            if(hasInitVector(method)) cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
-            else cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
-            byte[] encrypted = cipher.doFinal(value.getBytes());
-            return Base64.encode(encrypted);
+            if(hasInitVector(method))
+                cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
+            else
+                cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
+
+            byte[] base64Bytes = Base64.getEncoder().encode(value);
+            byte[] encrypted = cipher.doFinal(base64Bytes);
+            return encrypted;
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return null;
     }
 
-    public static String decrypt(String encrypted, AesType method) {
+    public static byte[] decrypt (byte[] encrypted, AesType method) {
         try {
             IvParameterSpec iv = new IvParameterSpec(
-                    initVector.getBytes("UTF-8")
+                    initVector.getBytes()
             );
-            SecretKeySpec skeySpec = new SecretKeySpec(
-                    key.getBytes("UTF-8"),
+            SecretKey skeySpec = new SecretKeySpec(
+                    key.getBytes(),
                     AesType.AES.value);
 
             Cipher cipher = Cipher.getInstance(method.value);
-            if(hasInitVector(method)) cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
-            else cipher.init(Cipher.DECRYPT_MODE, skeySpec);
-            byte[] original = cipher.doFinal(Base64.decode(encrypted));
+            if(hasInitVector(method))
+                cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
+            else
+                cipher.init(Cipher.DECRYPT_MODE, skeySpec);
 
-            return new String(original);
+            byte[] inBase64 = cipher.doFinal(encrypted);
+            return Base64.getDecoder().decode(inBase64);
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return null;
+    }
+
+    public static SecretKey getRandomSecureKey(Integer keySize) {
+        KeyGenerator generator;
+        try {
+            generator = KeyGenerator.getInstance("AES");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        generator.init(keySize);
+        return generator.generateKey();
     }
 
     static private boolean hasInitVector(AesType aesType){

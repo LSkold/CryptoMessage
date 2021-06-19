@@ -5,8 +5,11 @@ import javafx.scene.layout.Pane;
 import pg.project.bsk.Controller.Controller;
 import pg.project.bsk.Decryptor.AES;
 
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import java.net.*;
 import java.io.*;
+import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 
 public class Server extends Thread {
@@ -26,7 +29,10 @@ public class Server extends Thread {
         return instance;
     }
 
+
     public Server(Controller _controller, int port) throws Exception {
+
+
         serverSocket = new ServerSocket(port);
         serverSocket.setSoTimeout(1000000);
 
@@ -59,11 +65,18 @@ public class Server extends Thread {
 
                 input = new DataInputStream(server.getInputStream());
                 output = new DataOutputStream(server.getOutputStream());
-                output.writeUTF("Thank you for connecting to " + server.getLocalSocketAddress());
+                //output.writeUTF("Thank you for connecting to " + server.getLocalSocketAddress());
+
+                byte[] buffer = new byte[1024];
+                int len;
+
                 do {
-                    String message = input.readUTF();
-                    if(!message.isEmpty()) getMessage(message);
+                    while((len = input.read(buffer)) > 0)
+                    {
+                        getMessage(buffer);
+                    }
                 } while (true);
+
             } catch (SocketTimeoutException s) {
 
                 System.out.println("Socket timed out");
@@ -97,15 +110,18 @@ public class Server extends Thread {
         return (double)a/b;
     }
 
-    public void sendMessage(String message) throws IOException {
-        String tmp = AES.encrypt(message, controller.getCurrentDecryptionType());
-        System.out.println(tmp);
-        output.writeUTF(tmp);
+    public void sendMessage(byte[] message) throws IOException {
+
+        byte[] tmp = AES.encrypt(message, controller.getCurrentDecryptionType());
+        if (tmp != null) {
+            output.write(tmp);// .writeUTF(tmp);
+        }
     }
 
-    public void getMessage(String message) {
-        String tmp = AES.decrypt(message, controller.getCurrentDecryptionType());
-        controller.updateMainTextArea(tmp);
+    public void getMessage(byte[] message) {
+       controller.updateMainTextArea(message);
+       byte[] tmp = AES.decrypt(message, controller.getCurrentDecryptionType());
+        //controller.updateMainTextArea(tmp);
     }
 }
 
