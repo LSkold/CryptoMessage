@@ -1,11 +1,10 @@
 package pg.project.bsk.Decryptor;
 
 
-import com.sun.org.apache.xml.internal.security.utils.Base64;
-
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
 
 public class AES {
 
@@ -24,7 +23,7 @@ public class AES {
         public String getValue(){return value;}
     }
 
-    private static String key = "";
+    private static String key = "aesEncryptionKey";
     private static String initVector = "encryptionIntVec";
 
 
@@ -35,7 +34,7 @@ public class AES {
 
 
 
-    public static String encrypt(String value, AesType method) {
+    public static String encrypt(byte[] value, AesType method) {
         try {
             IvParameterSpec iv = new IvParameterSpec(
                     initVector.getBytes("UTF-8") // do zmiany
@@ -47,15 +46,15 @@ public class AES {
             Cipher cipher = Cipher.getInstance(method.value);
             if(hasInitVector(method)) cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
             else cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
-            byte[] encrypted = cipher.doFinal(value.getBytes());
-            return Base64.encode(encrypted);
+            byte[] decrypted = cipher.doFinal(value);
+            return Base64.getEncoder().encodeToString(decrypted);//.encode(encrypted);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return null;
     }
 
-    public static String decrypt(String encrypted, AesType method) {
+    public static byte[] decrypt(byte[] encrypted, AesType method) {
         try {
             IvParameterSpec iv = new IvParameterSpec(
                     initVector.getBytes("UTF-8")
@@ -67,8 +66,8 @@ public class AES {
             Cipher cipher = Cipher.getInstance(method.value);
             if(hasInitVector(method)) cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
             else cipher.init(Cipher.DECRYPT_MODE, skeySpec);
-            byte[] original = cipher.doFinal(Base64.decode(encrypted));
-            return new String(original);
+            return cipher.doFinal(Base64.getDecoder().decode(encrypted));
+            //return new String(original);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

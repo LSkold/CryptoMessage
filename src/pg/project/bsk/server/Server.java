@@ -38,7 +38,6 @@ public class Server extends Thread {
 
     public static void startServer(Controller controller) {
         try {
-            // ? do this in a seperate process?
             Thread t = getInstance(controller);
             t.start();
         } catch (Exception e) {
@@ -49,20 +48,16 @@ public class Server extends Thread {
     public void run() {
         while(true) {
             try {
-            /*
-            System.out.println("service: " + service);
-            System.out.println("input1: " + input1);
-            System.out.println("input2: " + input2);
-            */
                 server = serverSocket.accept();
                 System.out.println("Just connected to " + server.getRemoteSocketAddress());
 
                 input = new DataInputStream(server.getInputStream());
                 output = new DataOutputStream(server.getOutputStream());
-                output.writeUTF("Thank you for connecting to " + server.getLocalSocketAddress());
+                sendMessage("Thank you for connecting to " + server.getLocalSocketAddress());
                 do {
                     String message = input.readUTF();
-                    if(!message.isEmpty()) getMessage(message);
+                    if(!message.isEmpty())
+                        getMessage(message);
                 } while (true);
             } catch (SocketTimeoutException s) {
 
@@ -77,35 +72,23 @@ public class Server extends Thread {
             }
         }
     }
-    private String menu() {
-        return "\tMath Server\n***************************\nchoose a number for the coresponding service\nthen send response in this format\n\n\tservice: (int)\n\tinput1: (int)\n\tinput2: (int)\n\n 0. Quit\n 1. Print this help message\n 2. Addition\n 3. Subtraction\n 4. Multiplication\n 5. Division";
-    }
-
-    private int add(int a, int b) {
-        return a + b;
-    }
-
-    private int diff(int a, int b) {
-        return a - b;
-    }
-
-    private int mult(int a, int b) {
-        return a*b;
-    }
-
-    private double qout(int a, int b) {
-        return (double)a/b;
-    }
 
     public void sendMessage(String message) throws IOException {
+        String tmp = AES.encrypt(message.getBytes("UTF-8"), controller.getCurrentDecryptionType());
+        System.out.println(tmp);
+        output.writeUTF(tmp);
+    }
+
+    public void sendMessage(byte[] message) throws IOException {
         String tmp = AES.encrypt(message, controller.getCurrentDecryptionType());
         System.out.println(tmp);
         output.writeUTF(tmp);
     }
 
-    public void getMessage(String message) {
-        String tmp = AES.decrypt(message, controller.getCurrentDecryptionType());
-        controller.updateMainTextArea(tmp);
+    public void getMessage(String message) throws IOException {
+        byte[] tmp = AES.decrypt(message.getBytes("UTF-8"), controller.getCurrentDecryptionType());
+        controller.updateMainTextArea(new String(tmp));
+        //TODO:: logic to receiving files needs to be implemented here!
     }
 }
 

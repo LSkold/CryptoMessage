@@ -6,7 +6,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import pg.project.bsk.Controller.Controller;
 import pg.project.bsk.Decryptor.RSA;
 import pg.project.bsk.appinfo.AppInfo;
 import pg.project.bsk.server.Server;

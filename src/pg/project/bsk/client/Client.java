@@ -7,6 +7,9 @@ import pg.project.bsk.Main;
 
 import java.net.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Client extends Thread {
     private Controller controller;
@@ -48,7 +51,7 @@ public class Client extends Thread {
 
     public void run() {
         try{
-            output.writeUTF("Client connected!");
+            sendMessage("Client connected!");
             do{
                 String message = input.readUTF();
                 if(!message.isEmpty()) getMessage(message);
@@ -58,15 +61,27 @@ public class Client extends Thread {
         }
     }
 
-    private void getMessage(String message) {
-        String tmp = AES.decrypt(message, controller.getCurrentDecryptionType());
-        controller.updateMainTextArea(tmp);
+    public void sendMessage(String message) throws IOException{
+        String tmp = AES.encrypt(message.getBytes("UTF-8"), controller.getCurrentDecryptionType());
+        System.out.println(tmp);
+        output.writeUTF(tmp);
     }
 
-    public void sendMessage(String message) throws IOException {
+    public void sendMessage(byte[] message) throws IOException {
         String tmp = AES.encrypt(message, controller.getCurrentDecryptionType());
         System.out.println(tmp);
         output.writeUTF(tmp);
+    }
+
+    public void getMessage(String message) throws IOException {
+        byte[] tmp = AES.decrypt(message.getBytes("UTF-8"), controller.getCurrentDecryptionType());
+        Path path = Paths.get("D:\\Studia\\sem6\\bsk\\CryptoMessage\\src\\pg\\project\\bsk\\newfile.txt");
+        try{
+            Files.write(path,tmp);
+        }catch (Exception e){
+            //TODO:: this catch doesnt work yet. Have to be changed, but anyway Files.write() is working pretty good!
+            controller.updateMainTextArea(new String(tmp));
+        }
     }
 
 }

@@ -6,6 +6,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import pg.project.bsk.Decryptor.AES;
@@ -17,12 +18,37 @@ import pg.project.bsk.server.Server;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.security.PublicKey;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Controller implements Initializable {
+
+    public void chooseFileClicked(ActionEvent actionEvent) {
+
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Upload File Path");
+            fileChooser.getExtensionFilters().addAll(
+                    new FileChooser.ExtensionFilter("ALL FILES", "*.*"),
+                    new FileChooser.ExtensionFilter("ZIP", "*.zip"),
+                    new FileChooser.ExtensionFilter("PDF", "*.pdf"),
+                    new FileChooser.ExtensionFilter("TEXT", "*.txt"),
+                    new FileChooser.ExtensionFilter("IMAGE FILES", "*.jpg", "*.png", "*.gif")
+            );
+
+
+            File file = fileChooser.showOpenDialog(chooseFile.getScene().getWindow());
+
+            if (file != null) {
+                filePath.setText(file.getAbsolutePath());
+                // pickUpPathField it's your TextField fx:id
+
+            } else  {
+                System.out.println("error"); // or something else
+            }
+    }
 
     private enum  KeyType{
         Private,
@@ -44,14 +70,31 @@ public class Controller implements Initializable {
     Button generateKeysButton;
     @FXML
     Label statusLabel;
+    @FXML
+    Button chooseFile;
+    @FXML
+    TextField filePath;
 
     @FXML
     public void submitMessage(ActionEvent event) {
+
         try {
             if(AppInfo.getInstance(this).getVersion() == AppInfo.AppVersion.Server){
-                String message = "[SERVER] " + mainTextField.getText();
-                updateMainTextArea(message);
-                Server.getInstance(this).sendMessage(message);
+
+                if(!filePath.getText().isEmpty()){
+                    File sendingFile = new File(filePath.getText());
+                    String stringMessage = "[SERVER] Sending file: " + filePath.getText();
+                    updateMainTextArea(stringMessage);
+
+                    byte[] message = Files.readAllBytes(sendingFile.toPath());
+                    Server.getInstance(this).sendMessage(message);
+                    Server.getInstance(this).sendMessage(stringMessage);
+                }
+                if(!mainTextField.getText().isEmpty()){
+                    String message = "[SERVER] " + mainTextField.getText();
+                    updateMainTextArea(message);
+                    Server.getInstance(this).sendMessage(message);
+                }
             }
             else{
                 String message = "[CLIENT] " + mainTextField.getText();

@@ -45,7 +45,7 @@
             <TextField fx:id="mainTextField" prefWidth="250.0" onAction="#onEnter"/>
             <Button fx:id="submitTextMessage" onAction="#submitMessage" text="Submit"/>
             <Region prefWidth="20.0" HBox.hgrow="ALWAYS" />
-            <Button fx:id="chooseFile" text="Choose file" />
+            <Button fx:id="chooseFile" text="Choose file" onAction="#chooseFileClicked"/>
             <TextField fx:id="filePath" prefWidth="150.0" disable="true"/>
          </HBox>
       </VBox>
