@@ -1,11 +1,13 @@
 package pg.project.bsk;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import pg.project.bsk.Controller.Controller;
+import pg.project.bsk.Decryptor.RSA;
 import pg.project.bsk.appinfo.AppInfo;
 import pg.project.bsk.server.Server;
 
@@ -28,7 +30,11 @@ public class Main extends Application {
         primaryStage.setScene(new Scene(root));
         primaryStage.show();
 
-
+        primaryStage.setOnCloseRequest(event -> {
+            RSA.removeKeysDirectories();
+            Platform.exit();
+            System.exit(0);
+        });
     }
     public static void main(String[] args) {
         launch(args);

@@ -3,26 +3,33 @@ package pg.project.bsk.Controller;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.stage.Stage;
 
-import javafx.scene.control.TextArea;
 import pg.project.bsk.Decryptor.AES;
+import pg.project.bsk.Decryptor.RSA;
 import pg.project.bsk.appinfo.AppInfo;
 import pg.project.bsk.client.Client;
 import pg.project.bsk.server.Server;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.security.PublicKey;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Controller {
+public class Controller implements Initializable {
 
+    private enum  KeyType{
+        Private,
+        Public,
+    }
+
+    public static final String appDataDirectory = System.getenv("APPDATA");
     private AES.AesType currentDecryptionType = AES.AesType.AES_ECB;
 
     @FXML
@@ -33,7 +40,10 @@ public class Controller {
     TextField mainTextField;
     @FXML
     ComboBox<String> chooseCryptType;
-
+    @FXML
+    Button generateKeysButton;
+    @FXML
+    Label statusLabel;
 
     @FXML
     public void submitMessage(ActionEvent event) {
@@ -98,5 +108,46 @@ public class Controller {
 
     public AES.AesType getCurrentDecryptionType(){
         return currentDecryptionType;
+    }
+
+    public void generateKeys(ActionEvent actionEvent) {
+        try {
+            RSA.generateRSAKeys();
+            generateKeysButton.setDisable(areKeysGenerated());
+        } catch (Exception e) {
+            statusLabel.setText("");
+            e.printStackTrace();
+        }
+    }
+
+    private static String getKeysDirectory(KeyType keyType){
+        String path = appDataDirectory + "/CryptoMessage/";
+        if(keyType == KeyType.Public) path+="/Public/";
+        else path += "/Private/";
+        return path;
+    }
+
+    public static String getPrivateKeyDirectory(){
+        return getKeysDirectory(KeyType.Private);
+    }
+
+    public static String getPublicKeyDirectory(){
+        return getKeysDirectory(KeyType.Public);
+    }
+
+    private boolean areKeysGenerated(){
+        File privateKey = new File(getPrivateKeyDirectory()+"rsaPrivateKey");
+        File publicKey = new File(getPublicKeyDirectory()+"rsaPublicKey");
+
+        if(privateKey.exists() && publicKey.exists()) {
+            statusLabel.setText("Keys are generated!");
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        generateKeysButton.setDisable(areKeysGenerated());
     }
 }

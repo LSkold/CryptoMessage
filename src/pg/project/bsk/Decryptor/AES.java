@@ -24,8 +24,14 @@ public class AES {
         public String getValue(){return value;}
     }
 
-    private static final String key = "aesEncryptionKey";
-    private static final String initVector = "encryptionIntVec";
+    private static String key = "";
+    private static String initVector = "encryptionIntVec";
+
+
+    public static void setKey(String _key){
+        key = _key;
+
+    }
 
 
 
@@ -62,7 +68,6 @@ public class AES {
             if(hasInitVector(method)) cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
             else cipher.init(Cipher.DECRYPT_MODE, skeySpec);
             byte[] original = cipher.doFinal(Base64.decode(encrypted));
-
             return new String(original);
         } catch (Exception ex) {
             ex.printStackTrace();
