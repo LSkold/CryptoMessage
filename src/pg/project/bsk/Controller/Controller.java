@@ -2,12 +2,9 @@ package pg.project.bsk.Controller;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 
 import pg.project.bsk.Decryptor.AES;
 import pg.project.bsk.Decryptor.RSA;
@@ -18,8 +15,11 @@ import pg.project.bsk.server.Server;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.PublicKey;
+import java.util.Base64;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,15 +38,12 @@ public class Controller implements Initializable {
                     new FileChooser.ExtensionFilter("IMAGE FILES", "*.jpg", "*.png", "*.gif")
             );
 
-
             File file = fileChooser.showOpenDialog(chooseFile.getScene().getWindow());
 
             if (file != null) {
                 filePath.setText(file.getAbsolutePath());
-                // pickUpPathField it's your TextField fx:id
-
             } else  {
-                System.out.println("error"); // or something else
+                System.out.println("error");
             }
     }
 
@@ -59,7 +56,7 @@ public class Controller implements Initializable {
     private AES.AesType currentDecryptionType = AES.AesType.AES_ECB;
 
     @FXML
-    Button submitTextMessage;
+    Button submit;
     @FXML
     TextArea mainTextArea;
     @FXML
@@ -87,19 +84,25 @@ public class Controller implements Initializable {
                     updateMainTextArea(stringMessage);
 
                     byte[] message = Files.readAllBytes(sendingFile.toPath());
-                    Server.getInstance(this).sendMessage(message);
-                    Server.getInstance(this).sendMessage(stringMessage);
+                    Server.getInstance(this).sendMessage(
+                            AES.encrypt(message, getCurrentDecryptionType()));
+                    Server.getInstance(this).sendMessage(
+                            AES.encrypt(stringMessage.getBytes(StandardCharsets.UTF_8), getCurrentDecryptionType()));
+                    filePath.setText("");
                 }
                 if(!mainTextField.getText().isEmpty()){
                     String message = "[SERVER] " + mainTextField.getText();
                     updateMainTextArea(message);
-                    Server.getInstance(this).sendMessage(message);
+                    Server.getInstance(this).sendMessage(
+                            AES.encrypt(message.getBytes(StandardCharsets.UTF_8), getCurrentDecryptionType()));
                 }
             }
             else{
                 String message = "[CLIENT] " + mainTextField.getText();
                 updateMainTextArea(message);
-                Client.getInstance(this).sendMessage(message);
+                Client.getInstance(this).sendMessage(
+                        AES.encrypt(message.getBytes(StandardCharsets.UTF_8), getCurrentDecryptionType())
+                );
             }
             mainTextField.clear();
         }catch (Exception e){
@@ -157,8 +160,16 @@ public class Controller implements Initializable {
         try {
             RSA.generateRSAKeys();
             generateKeysButton.setDisable(areKeysGenerated());
+            if(AES.isKeyEmpty()){
+                Client.getInstance(this).sendMessage(
+                        "[PUBLIC_KEY]"+Base64.getEncoder().encodeToString(RSA.getPublicKey().getEncoded()));
+                Client.setWaitingForSessionKey(true);
+            }
+
+
         } catch (Exception e) {
             statusLabel.setText("");
+            AES.setKey("");
             e.printStackTrace();
         }
     }
@@ -191,6 +202,13 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        generateKeysButton.setDisable(areKeysGenerated());
+        setVisibility();
     }
+
+    public void setVisibility(){
+        generateKeysButton.setDisable(areKeysGenerated());
+        submit.setDisable(AES.isKeyEmpty());
+        chooseFile.setDisable(AES.isKeyEmpty());
+    }
+
 }

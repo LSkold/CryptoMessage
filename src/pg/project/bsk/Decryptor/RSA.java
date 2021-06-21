@@ -1,15 +1,12 @@
 package pg.project.bsk.Decryptor;
 
-import com.sun.org.apache.xml.internal.security.utils.Base64;
 import pg.project.bsk.Controller.Controller;
 
 import javax.crypto.Cipher;
-import javax.naming.ldap.Control;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.security.*;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.Objects;
 
 public class RSA {
@@ -19,11 +16,11 @@ public class RSA {
     private static PublicKey publicKey;
     private static PrivateKey privateKey;
 
-
-    public static boolean generateRSAKeys() throws Exception {
+    public static void generateRSAKeys() throws Exception {
         KeyPairGenerator factory;
         try {
             factory = KeyPairGenerator.getInstance(RSA);
+            factory.initialize(2048);
         }
         catch (NoSuchAlgorithmException e) {
             throw new Exception("Cannot create KeyPairGenerator for provided algorithm");
@@ -32,9 +29,7 @@ public class RSA {
         KeyPair pair = factory.generateKeyPair();
         publicKey = pair.getPublic();
         privateKey = pair.getPrivate();
-
         saveKeysToFile();
-        return true;
     }
 
     public static PublicKey getPublicKey(){
@@ -44,7 +39,6 @@ public class RSA {
     public static PrivateKey getPrivateKey(){
         return privateKey;
     }
-
 
     public static String encryptWithPublicKey(String value){
         return encrypt(publicKey, value);
@@ -62,13 +56,34 @@ public class RSA {
         return decrypt(privateKey, value);
     }
 
+    public static String encryptWithKey(byte[] message, String key){
+        return encryptSessionKey(key,message);
+    }
 
-    private static String encrypt(Key pubkey, String value) {
+    private static String encryptSessionKey(String key, byte[] message){
+        try {
+
+            byte[] encoded = Base64.getDecoder().decode(key);
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encoded);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            PublicKey pubKey = keyFactory.generatePublic(keySpec);
+
+            Cipher cipher = Cipher.getInstance(RSA);
+            cipher.init(Cipher.ENCRYPT_MODE, pubKey);
+            byte[] encrypted = cipher.doFinal(message);
+            return Base64.getEncoder().encodeToString(encrypted);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private static String encrypt(Key encryptionKey, String value) {
         try {
             Cipher cipher = Cipher.getInstance(RSA);
-            cipher.init(Cipher.ENCRYPT_MODE, pubkey);
+            cipher.init(Cipher.ENCRYPT_MODE, encryptionKey);
             byte[] encrypted = cipher.doFinal(value.getBytes());
-            return Base64.encode(encrypted);
+            return new String(Base64.getEncoder().encode(encrypted));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -77,11 +92,10 @@ public class RSA {
 
     private static String decrypt(Key decryptionKey, String encrypted) {
         try {
-            Cipher rsa;
-            rsa = Cipher.getInstance("RSA");
+            Cipher rsa = Cipher.getInstance(RSA);
             rsa.init(Cipher.DECRYPT_MODE, decryptionKey);
-            byte[] utf8 = rsa.doFinal(Base64.decode(encrypted));
-            return new String(utf8, "UTF8");
+            byte[] utf8 = rsa.doFinal(Base64.getDecoder().decode(encrypted));
+            return Base64.getEncoder().encodeToString(utf8);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -92,44 +106,18 @@ public class RSA {
 
         File publicDir = new File(Controller.getPublicKeyDirectory());
         File privateDir = new File(Controller.getPrivateKeyDirectory());
-        if(publicDir.exists())
-            publicDir.delete();
-        publicDir.mkdirs();
-        if(!privateDir.exists())
-            privateDir.mkdirs();
+        if(!publicDir.exists()) publicDir.mkdirs();
+        if(!privateDir.exists()) privateDir.mkdirs();
 
-        DataOutputStream dos = null;
-        try {
-            dos = new DataOutputStream(new FileOutputStream(
-                    Controller.getPublicKeyDirectory() + "rsaPublicKey"
-            ));
-            dos.write(publicKey.getEncoded());
-            dos.flush();
-        }
-        finally {
-            if (dos != null) {
-                try {
-                    dos.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        try {
-            dos = new DataOutputStream(new FileOutputStream(
-                    Controller.getPrivateKeyDirectory() + "rsaPrivateKey"
-            ));
-            dos.write(privateKey.getEncoded());
-            dos.flush();
-        }
-        finally {
-            if (dos != null)
-                try {
-                    dos.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-        }
+        Base64.Encoder encoder = Base64.getEncoder();
+
+        Writer out = new FileWriter( Controller.getPublicKeyDirectory() + "rsaPublicKey");
+        out.write(encoder.encodeToString(publicKey.getEncoded()));
+        out.close();
+
+        out = new FileWriter( Controller.getPrivateKeyDirectory() + "rsaPrivateKey");
+        out.write(encoder.encodeToString(privateKey.getEncoded()));
+        out.close();
     }
 
     public static void removeKeysDirectories(){

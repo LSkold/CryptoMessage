@@ -3,15 +3,21 @@ package pg.project.bsk.client;
 import javafx.fxml.FXMLLoader;
 import pg.project.bsk.Controller.Controller;
 import pg.project.bsk.Decryptor.AES;
+import pg.project.bsk.Decryptor.RSA;
 import pg.project.bsk.Main;
 
 import java.net.*;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Client extends Thread {
+
+    private static final String SESSION_KEY = "[SESSION_KEY]";
+
+    private static boolean waitingForSessionKey = false;
     private Controller controller;
 
     Socket client;
@@ -43,18 +49,22 @@ public class Client extends Thread {
     }
 
     public static void startClient(Controller controller) throws Exception{
-        // ? do this in a seperate process?
         Thread t = getInstance(controller);
         t.start();
+    }
 
+    public static void setWaitingForSessionKey(boolean value) {
+        waitingForSessionKey = value;
     }
 
     public void run() {
         try{
-            sendMessage("Client connected!");
             do{
                 String message = input.readUTF();
-                if(!message.isEmpty()) getMessage(message);
+                if(!message.isEmpty()) {
+                    if(waitingForSessionKey) getSessionKey(message);
+                    else getMessage(AES.decrypt(message.getBytes(StandardCharsets.UTF_8), controller.getCurrentDecryptionType()));
+                }
             }while (true);
         } catch (Exception e){
             e.printStackTrace();
@@ -62,26 +72,35 @@ public class Client extends Thread {
     }
 
     public void sendMessage(String message) throws IOException{
-        String tmp = AES.encrypt(message.getBytes("UTF-8"), controller.getCurrentDecryptionType());
-        System.out.println(tmp);
-        output.writeUTF(tmp);
+        System.out.println(message);
+        output.writeUTF(message);
     }
 
-    public void sendMessage(byte[] message) throws IOException {
-        String tmp = AES.encrypt(message, controller.getCurrentDecryptionType());
-        System.out.println(tmp);
-        output.writeUTF(tmp);
+    public void getSessionKey(String message) {
+        setWaitingForSessionKey(false);
+        AES.setKey(RSA.decryptWithPrivateKey(message));
+        controller.setVisibility();
     }
 
-    public void getMessage(String message) throws IOException {
-        byte[] tmp = AES.decrypt(message.getBytes("UTF-8"), controller.getCurrentDecryptionType());
-        Path path = Paths.get("D:\\Studia\\sem6\\bsk\\CryptoMessage\\src\\pg\\project\\bsk\\newfile.txt");
+    public void getMessage(byte[] message) {
+        String messageAsString = new String(message);
         try{
-            Files.write(path,tmp);
+            Path path = Paths.get("D:\\Studia\\sem6\\bsk\\CryptoMessage\\src\\pg\\project\\bsk\\newfile.txt");
+            throw new Exception("not implemented yet");
+            //Files.write(path,message);
         }catch (Exception e){
             //TODO:: this catch doesnt work yet. Have to be changed, but anyway Files.write() is working pretty good!
-            controller.updateMainTextArea(new String(tmp));
+            controller.updateMainTextArea(new String(message));
         }
+    }
+    private boolean messageContainsSessionKey(String s) {
+        return s.contains(SESSION_KEY);
+    }
+
+    private String popPrefix(String tmpString) {
+        if(messageContainsSessionKey(tmpString))
+            return tmpString.substring(SESSION_KEY.length());
+        return tmpString;
     }
 
 }
