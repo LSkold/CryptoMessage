@@ -48,8 +48,10 @@ public class AES {
                     AesType.AES.value);
 
             Cipher cipher = Cipher.getInstance(method.value);
-            if(hasInitVector(method)) cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
-            else cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
+            if(hasInitVector(method))
+                cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
+            else
+                cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
             byte[] decrypted = cipher.doFinal(value);
             return Base64.getEncoder().encodeToString(decrypted);
         } catch (Exception ex) {

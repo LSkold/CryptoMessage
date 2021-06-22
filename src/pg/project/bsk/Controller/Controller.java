@@ -1,5 +1,6 @@
 package pg.project.bsk.Controller;
 
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -13,48 +14,17 @@ import pg.project.bsk.client.Client;
 import pg.project.bsk.server.Server;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.PublicKey;
 import java.util.Base64;
 import java.util.ResourceBundle;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 public class Controller implements Initializable {
 
-    public void chooseFileClicked(ActionEvent actionEvent) {
-
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Upload File Path");
-            fileChooser.getExtensionFilters().addAll(
-                    new FileChooser.ExtensionFilter("ALL FILES", "*.*"),
-                    new FileChooser.ExtensionFilter("ZIP", "*.zip"),
-                    new FileChooser.ExtensionFilter("PDF", "*.pdf"),
-                    new FileChooser.ExtensionFilter("TEXT", "*.txt"),
-                    new FileChooser.ExtensionFilter("IMAGE FILES", "*.jpg", "*.png", "*.gif")
-            );
-
-            File file = fileChooser.showOpenDialog(chooseFile.getScene().getWindow());
-
-            if (file != null) {
-                filePath.setText(file.getAbsolutePath());
-            } else  {
-                System.out.println("error");
-            }
-    }
-
-    private enum  KeyType{
-        Private,
-        Public,
-    }
 
     public static final String appDataDirectory = System.getenv("APPDATA");
-    private AES.AesType currentDecryptionType = AES.AesType.AES_ECB;
-
     @FXML
     Button submit;
     @FXML
@@ -71,33 +41,87 @@ public class Controller implements Initializable {
     Button chooseFile;
     @FXML
     TextField filePath;
+    @FXML
+    Button submitFile;
+
+    private AES.AesType currentDecryptionType = AES.AesType.AES_ECB;
+
+    private String fileFullPath;
+
+    private static String getKeysDirectory(KeyType keyType) {
+        String path = appDataDirectory + "/CryptoMessage/";
+        if (keyType == KeyType.Public) path += "/Public/";
+        else path += "/Private/";
+        return path;
+    }
+
+    public static String getPrivateKeyDirectory() {
+        return getKeysDirectory(KeyType.Private);
+    }
+
+    public static String getPublicKeyDirectory() {
+        return getKeysDirectory(KeyType.Public);
+    }
+
+    public void chooseFileClicked(ActionEvent actionEvent) {
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Upload File Path");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("ALL FILES", "*.*"),
+                new FileChooser.ExtensionFilter("ZIP", "*.zip"),
+                new FileChooser.ExtensionFilter("PDF", "*.pdf"),
+                new FileChooser.ExtensionFilter("TEXT", "*.txt"),
+                new FileChooser.ExtensionFilter("IMAGE FILES", "*.jpg", "*.png", "*.gif")
+        );
+
+        File file = fileChooser.showOpenDialog(chooseFile.getScene().getWindow());
+
+        if (file != null) {
+            fileFullPath = file.getAbsolutePath();
+            filePath.setText(file.getName());
+            submitFile.setDisable(false);
+
+        } else {
+            System.out.println("error");
+        }
+    }
+
+
+    public void startSendingFile(ActionEvent actionEvent) throws Exception {
+        if (AppInfo.getInstance(this).getVersion() == AppInfo.AppVersion.Server) {
+            if (!filePath.getText().isEmpty()) {
+                File sendingFile = new File(fileFullPath);
+                String stringMessageToClient = "[FILE]" + filePath.getText();
+                String stringMessage = "[Server] sent file " + filePath.getText();
+                updateMainTextArea(stringMessage);
+
+                byte[] message = Files.readAllBytes(sendingFile.toPath());
+                Server.getInstance(this).sendMessage(
+                        AES.encrypt(message, getCurrentDecryptionType()), true);
+                Server.getInstance(this).sendMessage(
+                        AES.encrypt(stringMessageToClient.getBytes(StandardCharsets.UTF_8), getCurrentDecryptionType()), false);
+                filePath.setText("");
+            }
+
+        }
+        else
+            System.out.println("tylko dla serwera narazie byq");
+    }
 
     @FXML
     public void submitMessage(ActionEvent event) {
 
         try {
-            if(AppInfo.getInstance(this).getVersion() == AppInfo.AppVersion.Server){
+            if (AppInfo.getInstance(this).getVersion() == AppInfo.AppVersion.Server) {
 
-                if(!filePath.getText().isEmpty()){
-                    File sendingFile = new File(filePath.getText());
-                    String stringMessage = "[SERVER] Sending file: " + filePath.getText();
-                    updateMainTextArea(stringMessage);
-
-                    byte[] message = Files.readAllBytes(sendingFile.toPath());
-                    Server.getInstance(this).sendMessage(
-                            AES.encrypt(message, getCurrentDecryptionType()));
-                    Server.getInstance(this).sendMessage(
-                            AES.encrypt(stringMessage.getBytes(StandardCharsets.UTF_8), getCurrentDecryptionType()));
-                    filePath.setText("");
-                }
-                if(!mainTextField.getText().isEmpty()){
+                if (!mainTextField.getText().isEmpty()) {
                     String message = "[SERVER] " + mainTextField.getText();
                     updateMainTextArea(message);
                     Server.getInstance(this).sendMessage(
-                            AES.encrypt(message.getBytes(StandardCharsets.UTF_8), getCurrentDecryptionType()));
+                            AES.encrypt(message.getBytes(StandardCharsets.UTF_8), getCurrentDecryptionType()), false);
                 }
-            }
-            else{
+            } else {
                 String message = "[CLIENT] " + mainTextField.getText();
                 updateMainTextArea(message);
                 Client.getInstance(this).sendMessage(
@@ -105,7 +129,7 @@ public class Controller implements Initializable {
                 );
             }
             mainTextField.clear();
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -127,19 +151,19 @@ public class Controller implements Initializable {
 //        }
     }
 
-    public void updateMainTextArea(String text){
-        mainTextArea.insertText(0,text+"\n");
-        System.out.println("OUTPUT:\n"+mainTextArea.getText());
+    public void updateMainTextArea(String text) {
+        mainTextArea.insertText(0, text + "\n");
+        System.out.println("OUTPUT:\n" + mainTextArea.getText());
     }
 
     @FXML
-    public void onEnter(ActionEvent event){
-        submitMessage(event) ;
+    public void onEnter(ActionEvent event) {
+        submitMessage(event);
     }
 
     @FXML
     public void encryptionChanged(ActionEvent actionEvent) {
-        switch(chooseCryptType.getValue()){
+        switch (chooseCryptType.getValue()) {
             case "ECB":
                 currentDecryptionType = AES.AesType.AES_ECB;
                 break;
@@ -152,7 +176,7 @@ public class Controller implements Initializable {
         }
     }
 
-    public AES.AesType getCurrentDecryptionType(){
+    public AES.AesType getCurrentDecryptionType() {
         return currentDecryptionType;
     }
 
@@ -160,9 +184,9 @@ public class Controller implements Initializable {
         try {
             RSA.generateRSAKeys();
             generateKeysButton.setDisable(areKeysGenerated());
-            if(AES.isKeyEmpty()){
+            if (AES.isKeyEmpty()) {
                 Client.getInstance(this).sendMessage(
-                        "[PUBLIC_KEY]"+Base64.getEncoder().encodeToString(RSA.getPublicKey().getEncoded()));
+                        "[PUBLIC_KEY]" + Base64.getEncoder().encodeToString(RSA.getPublicKey().getEncoded()));
                 Client.setWaitingForSessionKey(true);
             }
 
@@ -174,27 +198,17 @@ public class Controller implements Initializable {
         }
     }
 
-    private static String getKeysDirectory(KeyType keyType){
-        String path = appDataDirectory + "/CryptoMessage/";
-        if(keyType == KeyType.Public) path+="/Public/";
-        else path += "/Private/";
-        return path;
-    }
+    private boolean areKeysGenerated() {
+        File privateKey = new File(getPrivateKeyDirectory() + "rsaPrivateKey");
+        File publicKey = new File(getPublicKeyDirectory() + "rsaPublicKey");
 
-    public static String getPrivateKeyDirectory(){
-        return getKeysDirectory(KeyType.Private);
-    }
-
-    public static String getPublicKeyDirectory(){
-        return getKeysDirectory(KeyType.Public);
-    }
-
-    private boolean areKeysGenerated(){
-        File privateKey = new File(getPrivateKeyDirectory()+"rsaPrivateKey");
-        File publicKey = new File(getPublicKeyDirectory()+"rsaPublicKey");
-
-        if(privateKey.exists() && publicKey.exists()) {
-            statusLabel.setText("Keys are generated!");
+        if (privateKey.exists() && publicKey.exists()) {
+            Platform.runLater(new Runnable() {
+                @Override
+                public void run() {
+                    statusLabel.setText("Keys are generated!");
+                }
+            });
             return true;
         }
         return false;
@@ -205,10 +219,15 @@ public class Controller implements Initializable {
         setVisibility();
     }
 
-    public void setVisibility(){
+    public void setVisibility() {
         generateKeysButton.setDisable(areKeysGenerated());
         submit.setDisable(AES.isKeyEmpty());
         chooseFile.setDisable(AES.isKeyEmpty());
+    }
+
+    private enum KeyType {
+        Private,
+        Public,
     }
 
 }
