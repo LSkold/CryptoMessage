@@ -3,10 +3,13 @@ package pg.project.bsk.Controller;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 
+import javafx.stage.Stage;
 import pg.project.bsk.Decryptor.AES;
 import pg.project.bsk.Decryptor.RSA;
 import pg.project.bsk.appinfo.AppInfo;
@@ -14,11 +17,14 @@ import pg.project.bsk.client.Client;
 import pg.project.bsk.server.Server;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Base64;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 public class Controller implements Initializable {
@@ -46,6 +52,11 @@ public class Controller implements Initializable {
 
     private AES.AesType currentDecryptionType = AES.AesType.AES_ECB;
 
+    public void setTransferPercent(Integer transferPercent) {
+        this.transferPercent = transferPercent;
+    }
+
+    Integer transferPercent;
     private String fileFullPath;
 
     private static String getKeysDirectory(KeyType keyType) {
@@ -98,7 +109,7 @@ public class Controller implements Initializable {
 
                 byte[] message = Files.readAllBytes(sendingFile.toPath());
                 Server.getInstance(this).sendMessage(
-                        AES.encrypt(message, getCurrentDecryptionType()), true);
+                        sendingFile.toPath().toString(), true); // musi isc zwykly, paczki beda szyfrowane, odbior bez odszyfrowania i na koncu decrypt
                 Server.getInstance(this).sendMessage(
                         AES.encrypt(stringMessageToClient.getBytes(StandardCharsets.UTF_8), getCurrentDecryptionType()), false);
                 filePath.setText("");
@@ -121,7 +132,8 @@ public class Controller implements Initializable {
                     Server.getInstance(this).sendMessage(
                             AES.encrypt(message.getBytes(StandardCharsets.UTF_8), getCurrentDecryptionType()), false);
                 }
-            } else {
+            }
+            else {
                 String message = "[CLIENT] " + mainTextField.getText();
                 updateMainTextArea(message);
                 Client.getInstance(this).sendMessage(
@@ -133,22 +145,22 @@ public class Controller implements Initializable {
             e.printStackTrace();
         }
 
-//        try {
-//            FXMLLoader fxmlLoader = new FXMLLoader();
-//            fxmlLoader.setLocation(getClass().getResource("progress.fxml"));
-//            /*
-//             * if "fx:controller" is not set in fxml
-//             * fxmlLoader.setController(NewWindowController);
-//             */
-//            Scene scene = new Scene(fxmlLoader.load());
-//            Stage stage = new Stage();
-//            stage.setTitle("Sending");
-//            stage.setScene(scene);
-//            stage.show();
-//        } catch (IOException e) {
-//            Logger logger = Logger.getLogger(getClass().getName());
-//            logger.log(Level.SEVERE, "Failed to create new Window.", e);
-//        }
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader();
+            fxmlLoader.setLocation(getClass().getResource("progress.fxml"));
+            /*
+             * if "fx:controller" is not set in fxml
+             * fxmlLoader.setController(NewWindowController);
+             */
+            Scene scene = new Scene(fxmlLoader.load());
+            Stage stage = new Stage();
+            stage.setTitle("Sending");
+            stage.setScene(scene);
+            stage.show();
+        } catch (IOException e) {
+            Logger logger = Logger.getLogger(getClass().getName());
+            logger.log(Level.SEVERE, "Failed to create new Window.", e);
+        }
     }
 
     public void updateMainTextArea(String text) {

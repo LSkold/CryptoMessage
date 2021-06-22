@@ -38,6 +38,9 @@ public class AES {
         return key.isEmpty();
     }
 
+
+    // RAPORT - możesz zaświrować, że dzięki base64 zawsze mamy podzielne przez 16 stringi, chociaż to nie prawda w naszym przypadku, nie wiadomo czemu XDD
+
     public static String encrypt(byte[] value, AesType method) {
         try {
             IvParameterSpec iv = new IvParameterSpec(

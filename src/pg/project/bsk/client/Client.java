@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 
+
 public class Client extends Thread {
 
     public static final String FILENAME_PREFIX = "[FILE]";
@@ -30,6 +31,8 @@ public class Client extends Thread {
 
 
     private Controller controller;
+    private Object lock;
+    private int finishedThreads;
 
 
     public Client(Controller _controller, String ip, int port) throws Exception {
@@ -78,21 +81,73 @@ public class Client extends Thread {
                             fileIsReady = true;
                         }
                         if (fileIsReady) {
-//                            new Runnable() {
-//                                @Override
-//                                public void run() {
-                                    try {
-                                        ReceivingThread f = new ReceivingThread("First part", 7777, "127.0.0.1", 1);
-                                        f.run();
-                                        ReceivingThread s = new ReceivingThread("Second part", 7778, "127.0.0.1", 2);
-                                        s.run();
-                                        ReceivingThread t = new ReceivingThread("Third part", 7779, "127.0.0.1", 3);
-                                        t.run();
-                                        ReceivingThread o = new ReceivingThread("Fourth part", 7780, "127.0.0.1", 4);
-                                        o.run();
-                                    } catch (Exception e) {
-                                        System.out.println(e.getMessage());
+
+                            // PSEUDO CZUWACZ NA ZJEDNOCZENIE PLIKÓW, NIE SPRAWDZALEM CZY DZIALA
+                            new Runnable() {
+                                @Override
+                                public void run() {
+                                    while (true) {
+
+                                        synchronized (lock) {
+                                            try {
+                                                Thread.sleep(1000);
+                                                if (finishedThreads == 4) {
+
+                                                    PrintWriter pw = new PrintWriter(fileName);
+                                                    BufferedReader br1 = new BufferedReader(new FileReader("1_part"));
+                                                    BufferedReader br2 = new BufferedReader(new FileReader("2_part"));
+                                                    BufferedReader br3 = new BufferedReader(new FileReader("3_part"));
+                                                    BufferedReader br4 = new BufferedReader(new FileReader("4_part"));
+
+                                                    String line1 = br1.readLine();
+                                                    String line2 = br2.readLine();
+                                                    String line3 = br3.readLine();
+                                                    String line4 = br4.readLine();
+                                                    do {
+
+                                                        if (line1 != null) {
+                                                            pw.println(line1);
+                                                            line1 = br1.readLine();
+                                                        } else if (line2 != null) {
+                                                            pw.println(line2);
+                                                            line2 = br2.readLine();
+                                                        } else if (line3 != null) {
+                                                            pw.println(line3);
+                                                            line3 = br3.readLine();
+
+                                                        } else if (line4 != null) {
+                                                            pw.println(line4);
+                                                            line4 = br4.readLine();
+                                                        } else
+                                                            break;
+                                                    }
+                                                    while (true);
+
+                                                }
+                                            } catch (InterruptedException | FileNotFoundException e) {
+                                                e.printStackTrace();
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
                                     }
+
+                                }
+                            };
+
+                            try {
+                                System.out.println("Starting threads. ");
+                                ReceivingThread f = new ReceivingThread("First part", 7777, "127.0.0.1", 1);
+                                f.start();
+                                ReceivingThread s = new ReceivingThread("Second part", 7778, "127.0.0.1", 2);
+                                s.start();
+                                ReceivingThread t = new ReceivingThread("Third part", 7779, "127.0.0.1", 3);
+                                t.start();
+                                ReceivingThread o = new ReceivingThread("Fourth part", 7780, "127.0.0.1", 4);
+                                o.start();
+                            } catch (Exception e) {
+                                System.out.println(e.getMessage());
+                            }
 //                                }
 //                            };
 
@@ -154,7 +209,7 @@ public class Client extends Thread {
         return tmpString;
     }
 
-    private  class ReceivingThread extends Thread {
+    private class ReceivingThread extends Thread {
 
         InputStream inFromThread;
         DataInputStream inputThread;
@@ -168,29 +223,37 @@ public class Client extends Thread {
             super(name);
             this.numberOfPack = numberOfPack;
             this.socketThread = new Socket(ip, port);
-
-            this.inFromThread = this.socketThread.getInputStream();
-            this.inputThread = new DataInputStream(this.inFromThread);
-            this.outputFilePart = new FileOutputStream(numberOfPack + "_part");
             this.fileName = numberOfPack + "_part";
-            System.out.println(name + " is initialized. ");
 
         }
 
         @Override
         public void run() {
+            System.out.println(this.getName() + " just started. ");
+
+            try {
+                this.inFromThread = this.socketThread.getInputStream();
+                this.inputThread = new DataInputStream(this.inFromThread);
+                this.outputFilePart = new FileOutputStream(numberOfPack + "_part");
+                System.out.println(this.getName() + " initialized correctly. ");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
             Path path = Paths.get(this.fileName);
             String message;
 
             try {
-                System.out.println(this.getName() + " just started. ");
-                do {
 
-                    message = input.readUTF();
+                do {
+                    message = inputThread.readUTF();
                     Files.write(path, AES.decrypt(message.getBytes(StandardCharsets.UTF_8), controller.getCurrentDecryptionType()));
 
-                } while (input.readUTF().equals("END"));
+                } while (!message.equals("END_OF_UPLOADING."));
+
+                synchronized (lock) {
+                    finishedThreads++;
+                }
 
             } catch (IOException ioException) {
                 ioException.printStackTrace();
